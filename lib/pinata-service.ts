@@ -4,33 +4,7 @@
 
 export async function uploadMetadataToPinata(metadata: any) {
   try {
-    // First try to use Pinata if API keys are available
-    const pinataApiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY
-    const pinataSecretKey = process.env.NEXT_PUBLIC_PINATA_SECRET_KEY
-
-    if (pinataApiKey && pinataSecretKey) {
-      // Use Pinata directly from the client
-      const url = `https://api.pinata.cloud/pinning/pinJSONToIPFS`
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          pinata_api_key: pinataApiKey,
-          pinata_secret_api_key: pinataSecretKey,
-        },
-        body: JSON.stringify(metadata),
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to upload to Pinata: ${response.statusText}`)
-      }
-
-      const data = await response.json()
-      return `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`
-    }
-
-    // Fallback to our server API route
+    // Always use our server API route
     const response = await fetch("/api/metadata", {
       method: "POST",
       headers: {
@@ -92,35 +66,7 @@ export async function uploadImageToPinata(imageUrl: string, name: string) {
       return imageUrl
     }
 
-    // Try to use Pinata directly if API keys are available
-    const pinataApiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY
-    const pinataSecretKey = process.env.NEXT_PUBLIC_PINATA_SECRET_KEY
-
-    if (pinataApiKey && pinataSecretKey) {
-      // Create a FormData object for Pinata
-      const formData = new FormData()
-      formData.append("file", imageBlob, name)
-
-      const url = `https://api.pinata.cloud/pinning/pinFileToIPFS`
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          pinata_api_key: pinataApiKey,
-          pinata_secret_api_key: pinataSecretKey,
-        },
-        body: formData,
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to upload to Pinata: ${response.statusText}`)
-      }
-
-      const data = await response.json()
-      return `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`
-    }
-
-    // Fallback to our server API route
+    // Always use our server API route
     const formData = new FormData()
     formData.append("file", imageBlob, name)
 

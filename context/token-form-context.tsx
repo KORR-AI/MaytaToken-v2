@@ -844,11 +844,7 @@ export function TokenFormProvider({ children }: { children: React.ReactNode }) {
 
       logDebugInfo("Starting token creation process")
       logDebugInfo("Form state:", formState)
-      logDebugInfo("Checking Pinata credentials...")
-      const pinataApiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY
-      const pinataSecretKey = process.env.NEXT_PUBLIC_PINATA_SECRET_KEY
-      logDebugInfo(`Pinata API Key available: ${!!pinataApiKey}`)
-      logDebugInfo(`Pinata Secret Key available: ${!!pinataSecretKey}`)
+      logDebugInfo("Using server-side API for Pinata uploads")
 
       // Update progress for initialization
       setProgress(5)

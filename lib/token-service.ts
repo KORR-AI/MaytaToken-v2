@@ -1,4 +1,4 @@
-"\"use client"
+"use client"
 
 import {
   Connection,
@@ -497,6 +497,7 @@ export const createToken = async (
       symbol: params.symbol,
       description: `${params.tokenName} token created with MaytaToken Creator`,
       image: imageUrl,
+      tokenStandard: "Fungible",
       attributes: [],
       properties: {
         files: [

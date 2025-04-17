@@ -44,8 +44,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if Pinata API keys are available
-    const pinataApiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY
-    const pinataSecretKey = process.env.NEXT_PUBLIC_PINATA_SECRET_KEY
+    const pinataApiKey = process.env.PINATA_API_KEY
+    const pinataSecretKey = process.env.PINATA_SECRET_KEY
 
     // If Pinata keys are available, try to use Pinata
     if (pinataApiKey && pinataSecretKey) {
