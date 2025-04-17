@@ -1,3 +1,4 @@
+
 # SPL Token Creator
 
 This application allows you to create Solana SPL tokens with embedded metadata in a single transaction.
@@ -7,3 +8,35 @@ This application allows you to create Solana SPL tokens with embedded metadata i
 1. Clone the repository
 2. Install dependencies: `npm install`
 3. Create a `.env.local` file with the following variables:
+=======
+# MaytaToken Creator
+
+*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+
+[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/dragunkorr-gmailcoms-projects/v0-mayta-token-creator)
+[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/xEkmmuhitlh)
+
+## Overview
+
+This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
+Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+
+## Deployment
+
+Your project is live at:
+
+**[https://vercel.com/dragunkorr-gmailcoms-projects/v0-mayta-token-creator](https://vercel.com/dragunkorr-gmailcoms-projects/v0-mayta-token-creator)**
+
+## Build your app
+
+Continue building your app on:
+
+**[https://v0.dev/chat/projects/xEkmmuhitlh](https://v0.dev/chat/projects/xEkmmuhitlh)**
+
+## How It Works
+
+1. Create and modify your project using [v0.dev](https://v0.dev)
+2. Deploy your chats from the v0 interface
+3. Changes are automatically pushed to this repository
+4. Vercel deploys the latest version from this repository
+
