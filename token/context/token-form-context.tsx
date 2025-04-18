@@ -1,6 +1,5 @@
 "use client"
-// context/token-form-context.tsx
-import { simplifiedRaydium } from '@/lib/simplified-raydium';
+
 import type React from "react"
 import { createContext, useContext, useState, useEffect, useRef } from "react"
 import { createToken } from "@/lib/token-service"
@@ -845,7 +844,11 @@ export function TokenFormProvider({ children }: { children: React.ReactNode }) {
 
       logDebugInfo("Starting token creation process")
       logDebugInfo("Form state:", formState)
-      logDebugInfo("Using server-side API for Pinata uploads")
+      logDebugInfo("Checking Pinata credentials...")
+      const pinataApiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY
+      const pinataSecretKey = process.env.NEXT_PUBLIC_PINATA_SECRET_KEY
+      logDebugInfo(`Pinata API Key available: ${!!pinataApiKey}`)
+      logDebugInfo(`Pinata Secret Key available: ${!!pinataSecretKey}`)
 
       // Update progress for initialization
       setProgress(5)
@@ -988,6 +991,24 @@ export function TokenFormProvider({ children }: { children: React.ReactNode }) {
             title: "Transaction Rejected",
             description: "You rejected the transaction. You can try again when ready.",
             type: "warning",
+          })
+          return // Exit early
+        }
+
+        // Handle insufficient funds errors specifically
+        if (
+          tokenError.message &&
+          (tokenError.message.includes("insufficient lamports") ||
+            tokenError.message.includes("insufficient funds") ||
+            tokenError.message.includes("Insufficient SOL balance"))
+        ) {
+          setError("Insufficient SOL balance. Please add more SOL to your wallet and try again.")
+          setTransactionStatus("Error: Insufficient SOL balance for transaction")
+          addToast({
+            title: "Insufficient Balance",
+            description: "You don't have enough SOL to complete this transaction. Please add more SOL to your wallet.",
+            type: "error",
+            duration: 10000, // Show for longer
           })
           return // Exit early
         }

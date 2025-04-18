@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connect Phantom - Minimal</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #000;
+      color: #fff;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #111;
+      border-radius: 10px;
+    }
+    h1 {
+      color: #ffa500;
+      text-align: center;
+    }
+    .button {
+      display: block;
+      width: 100%;
+      background: #ffa500;
+      color: #000;
+      border: none;
+      padding: 15px;
+      font-size: 16px;
+      font-weight: bold;
+      margin: 10px 0;
+      border-radius: 5px;
+      text-align: center;
+      text-decoration: none;
+    }
+    .steps {
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Connect Phantom Wallet</h1>
+    
+    <div class="steps">
+      <h3>Manual Connection Steps:</h3>
+      <ol>
+        <li>Open the Phantom app on your device</li>
+        <li>Tap the "Browse" icon at the bottom</li>
+        <li>Enter this URL: <strong id="app-url"></strong></li>
+      </ol>
+    </div>
+
+    <a href="#" class="button" id="phantom-link">Open Phantom Browser</a>
+    
+    <div style="margin-top: 30px;">
+      <h3>Troubleshooting:</h3>
+      <ul>
+        <li>Make sure you have the latest version of Phantom installed</li>
+        <li>Try restarting the Phantom app</li>
+        <li>Clear the app cache in your device settings</li>
+        <li>Try using a different internet connection</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // Get the base URL (without the /minimal-connect.html part)
+    const baseUrl = window.location.href.replace('/minimal-connect.html', '');
+    document.getElementById('app-url').textContent = baseUrl;
+    
+    // Set up the Phantom link
+    const phantomLink = document.getElementById('phantom-link');
+    phantomLink.href = `https://phantom.app/ul/browse/${encodeURIComponent(baseUrl)}`;
+  </script>
+</body>
+</html>
