@@ -375,6 +375,28 @@ const sendTransaction = async (
       } catch (error: any) {
         console.error("Error sending transaction:", error)
 
+        // Check for user rejection specifically
+        if (
+          error.message &&
+          (error.message.includes("User rejected") || error.message.includes("rejected the request"))
+        ) {
+          console.log("User rejected the transaction")
+          throw new Error("User rejected the request. You can try again when ready.")
+        }
+
+        // Check for insufficient funds errors specifically
+        if (
+          error.message &&
+          (error.message.includes("insufficient lamports") ||
+            error.message.includes("insufficient funds") ||
+            error.logs?.some((log) => log.includes("insufficient lamports")))
+        ) {
+          console.log("Insufficient funds error detected")
+          throw new Error(
+            `Insufficient SOL balance to complete this transaction. Please add more SOL to your wallet and try again.`,
+          )
+        }
+
         // Check for blockhash errors specifically
         if (
           error.message &&
@@ -464,6 +486,26 @@ export const createToken = async (
 
     const userPublicKey = wallet.publicKey
     console.log("Wallet public key:", userPublicKey.toString())
+
+    // Check if the wallet has enough SOL for the transaction
+    try {
+      const balance = await connection.getBalance(userPublicKey)
+      const minimumRequired = 2500000 // 0.0025 SOL, slightly more than the error indicated
+
+      if (balance < minimumRequired) {
+        throw new Error(
+          `Insufficient SOL balance. You have ${balance / LAMPORTS_PER_SOL} SOL, but need at least ${minimumRequired / LAMPORTS_PER_SOL} SOL for this transaction.`,
+        )
+      }
+
+      console.log(`Wallet balance: ${balance / LAMPORTS_PER_SOL} SOL, sufficient for transaction`)
+    } catch (balanceError: any) {
+      if (balanceError.message && balanceError.message.includes("Insufficient SOL balance")) {
+        throw balanceError // Re-throw the specific error
+      }
+      // If it's another type of error checking balance, just log and continue
+      console.warn("Error checking balance:", balanceError)
+    }
 
     const decimals = Number.parseInt(params.decimals)
     const totalSupply = Number.parseFloat(params.supply)
@@ -581,6 +623,7 @@ export const createToken = async (
       if (params.fee && params.fee > 0) {
         try {
           onStatus?.(`Including fee payment (${params.fee.toFixed(3)} SOL) in transaction...`)
+          console.log("Preparing fee transfer")
 
           // Get fee receiver address from environment variable
           const feeReceiverAddress = process.env.NEXT_PUBLIC_FEE_RECEIVER_ADDRESS || process.env.FEE_RECEIVER_ADDRESS
@@ -605,6 +648,7 @@ export const createToken = async (
 
               // Add fee instruction first
               transaction.add(feeInstruction)
+              console.log("Fee transfer completed")
             } catch (error) {
               console.error("Error creating fee instruction:", error)
             }
@@ -687,7 +731,11 @@ export const createToken = async (
       transaction.add(createAssociatedTokenAccountIx)
 
       // 8. Mint tokens instruction
-      const mintAmount = totalSupply * Math.pow(10, decimals)
+      const mintAmount = Math.floor(totalSupply * Math.pow(10, decimals))
+      // Ensure mintAmount is a valid integer before converting to BigInt
+      if (!Number.isFinite(mintAmount) || Number.isNaN(mintAmount)) {
+        throw new Error(`Invalid mint amount calculated: ${mintAmount}. Please check your supply and decimals values.`)
+      }
       const mintToIx = createMintToInstruction(
         mint,
         associatedTokenAddress,
@@ -696,6 +744,7 @@ export const createToken = async (
         [],
         TOKEN_2022_PROGRAM_ID,
       )
+
       transaction.add(mintToIx)
 
       // Send the transaction with all instructions
@@ -705,27 +754,56 @@ export const createToken = async (
       // Create a descriptive name for the transaction that includes token supply
       const transactionName = `Create ${params.tokenName} (${params.symbol}) with ${params.supply} supply`
 
-      // Send the transaction with the mint keypair as a signer
-      const signature = await sendTransaction(
-        connection,
-        transaction,
-        wallet,
-        [mintKeypair],
-        onSignature,
-        (attempt, delay) => {
-          onStatus?.(`Rate limit hit. Retrying transaction (${attempt}/15) after ${Math.round(delay / 1000)}s...`)
-        },
-        transactionName,
-      )
+      try {
+        console.log("Sending transaction")
+        const signature = await sendTransaction(
+          connection,
+          transaction,
+          wallet,
+          [mintKeypair],
+          onSignature,
+          (attempt, delay) => {
+            onStatus?.(`Rate limit hit. Retrying transaction (${attempt}/15) after ${Math.round(delay / 1000)}s...`)
+          },
+          transactionName,
+        )
+        console.log("Transaction sent, signature:", signature)
 
-      console.log("Token created with signature:", signature)
+        // Add timeout for confirmation
+        const confirmationPromise = connection.confirmTransaction(
+          {
+            signature,
+            blockhash: transaction.recentBlockhash!,
+            lastValidBlockHeight: transaction.lastValidBlockHeight!,
+          },
+          "confirmed",
+        )
 
-      onStatus?.("Token creation complete!")
-      return {
-        success: true,
-        mintAddress: mint.toString(),
-        signature: signature,
-        metadataUrl: metadataUrl,
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Transaction confirmation timeout")), 60000),
+        )
+
+        try {
+          await Promise.race([confirmationPromise, timeoutPromise])
+          console.log("Transaction confirmed")
+        } catch (confirmError) {
+          console.warn("Transaction confirmation timed out or failed:", confirmError)
+          // Continue anyway as the transaction might still be processing
+        }
+
+        console.log("Token created with signature:", signature)
+
+        onStatus?.("Token creation complete!")
+        console.log("Token creation completed, returning result")
+        return {
+          success: true,
+          mintAddress: mint.toString(),
+          signature: signature,
+          metadataUrl: metadataUrl,
+        }
+      } catch (error) {
+        console.error("Transaction error:", error)
+        throw error
       }
     } catch (error: any) {
       // Try to parse the Alchemy error

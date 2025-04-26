@@ -1,309 +1,159 @@
 "use client"
-
-import { motion } from "framer-motion"
-import { Copy, ExternalLink, Check, Share2 } from "lucide-react"
+import { CheckCircle } from "lucide-react"
 import { useState, useEffect } from "react"
-import Link from "next/link"
 import ModernButton from "./modern-button"
+import type React from "react"
+import { useRouter } from "next/navigation"
+import ModernCard from "./modern-card"
+import ImageDisplay from "./image-display"
+import Link from "next/link"
+import { saveToken } from "@/lib/token-storage"
+import { v4 as uuidv4 } from "uuid"
 
 interface TokenCompletionPageProps {
   mintAddress: string
   tokenName: string
   tokenSymbol: string
-  onCreateAnother?: () => void
+  tokenImage?: string
+  tokenSupply?: string
+  tokenDecimals?: string
+  onCreateAnother: () => void
 }
 
-export default function TokenCompletionPage({
+const TokenCompletionPage: React.FC<TokenCompletionPageProps> = ({
   mintAddress,
   tokenName,
   tokenSymbol,
+  tokenImage,
+  tokenSupply = "1000000000",
+  tokenDecimals = "9",
   onCreateAnother,
-}: TokenCompletionPageProps) {
+}) => {
+  const router = useRouter()
   const [copied, setCopied] = useState(false)
 
-  // Add animation for entrance
+  // Save token data to localStorage when component mounts
   useEffect(() => {
-    // Clean up confetti after 5 seconds
-  }, [])
+    if (mintAddress && tokenName && tokenSymbol) {
+      saveToken({
+        id: uuidv4(),
+        name: tokenName,
+        symbol: tokenSymbol,
+        mintAddress: mintAddress,
+        image: tokenImage,
+        createdAt: new Date().toISOString(),
+        supply: tokenSupply,
+        decimals: tokenDecimals,
+      })
+    }
+  }, [mintAddress, tokenName, tokenSymbol, tokenImage, tokenSupply, tokenDecimals])
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(mintAddress)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(mintAddress)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error("Failed to copy: ", err)
+    }
+  }
+
+  const viewOnSolscan = () => {
+    window.open(`https://solscan.io/token/${mintAddress}`, "_blank")
+  }
+
+  const openRaydiumLiquidity = () => {
+    window.open(`https://raydium.io/liquidity/create-pool/`, "_blank")
+  }
+
+  const openRaydiumPortfolio = () => {
+    window.open(`https://raydium.io/portfolio/?position_tab=standard`, "_blank")
   }
 
   return (
-    <div className="relative max-w-5xl mx-auto">
-      {/* Achievement Banner */}
-      <motion.div
-        className="relative overflow-hidden bg-gradient-to-r from-amber-900/80 via-amber-800/80 to-amber-900/80 rounded-xl border border-amber-500/50 shadow-lg shadow-amber-500/20 mb-8"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        {/* Animated background elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <motion.div
-            className="absolute inset-0 opacity-10"
-            animate={{
-              backgroundPosition: ["0% 0%", "100% 100%"],
-            }}
-            transition={{
-              duration: 20,
-              repeat: Number.POSITIVE_INFINITY,
-              repeatType: "reverse",
-            }}
-            style={{
-              backgroundImage: "url('/digital-flow.png')",
-              backgroundSize: "cover",
-            }}
-          />
+    <div className="flex flex-col items-center justify-center w-full max-w-3xl mx-auto">
+      <ModernCard className="w-full p-6 text-center" variant="gradient">
+        <div className="flex justify-center mb-4">
+          <CheckCircle className="w-16 h-16 text-green-400" />
+        </div>
+        <h2 className="text-2xl font-bold text-white mb-2">Token Created Successfully!</h2>
+        <p className="text-white/80 mb-6">
+          Your token <span className="text-amber-400 font-semibold">{tokenName}</span> ({tokenSymbol}) has been created
+          on the Solana blockchain.
+        </p>
 
-          {/* Animated light rays */}
-          <div className="absolute inset-0">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <motion.div
-                key={i}
-                className="absolute h-full w-[30px] bg-gradient-to-b from-amber-500/0 via-amber-400/10 to-amber-500/0"
-                style={{ left: `${i * 20}%` }}
-                animate={{ x: ["-100%", "400%"] }}
-                transition={{
-                  duration: 7,
-                  delay: i * 0.5,
-                  repeat: Number.POSITIVE_INFINITY,
-                  repeatType: "loop",
-                  ease: "linear",
-                }}
+        {/* Display token image if available */}
+        {tokenImage && (
+          <div className="flex justify-center mb-6">
+            <div className="relative w-24 h-24 overflow-hidden rounded-full border-4 border-amber-500/30 shadow-lg shadow-amber-500/20">
+              <ImageDisplay
+                src={tokenImage || "/placeholder.svg"}
+                alt={`${tokenName} Token`}
+                width={96}
+                height={96}
+                className="rounded-full"
               />
-            ))}
+            </div>
+          </div>
+        )}
+
+        <div className="bg-black/30 rounded-lg p-4 mb-6 border border-white/10">
+          <div className="flex flex-col sm:flex-row items-center justify-between">
+            <div className="mb-3 sm:mb-0">
+              <p className="text-sm text-white/60 mb-1">Token Address:</p>
+              <p className="font-mono text-amber-400 text-sm break-all">{mintAddress}</p>
+            </div>
+            <div className="flex space-x-2">
+              <ModernButton onClick={copyToClipboard} variant="outline" size="sm">
+                {copied ? "Copied!" : "Copy Address"}
+              </ModernButton>
+              <ModernButton onClick={viewOnSolscan} variant="outline" size="sm">
+                View on Solscan
+              </ModernButton>
+            </div>
           </div>
         </div>
 
-        <div className="relative z-10 px-8 py-12 text-center">
-          {/* Success Icon */}
-          <motion.div
-            className="mx-auto mb-6 w-24 h-24 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 flex items-center justify-center"
-            initial={{ scale: 0 }}
-            animate={{ scale: [0, 1.2, 1] }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-          >
-            <Check className="w-12 h-12 text-white" />
-          </motion.div>
-
-          <motion.h1
-            className="text-4xl md:text-5xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-200"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
-          >
-            Token Created Successfully!
-          </motion.h1>
-
-          <motion.div
-            className="text-xl text-white/90 mb-6"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4, duration: 0.5 }}
-          >
-            Your token <span className="font-bold text-amber-300">{tokenName}</span> (
-            <span className="text-amber-300">{tokenSymbol}</span>) is now live on the Solana blockchain
-          </motion.div>
-
-          {/* Token Address */}
-          <motion.div
-            className="bg-black/30 rounded-lg border border-amber-500/30 p-4 mb-6 max-w-2xl mx-auto"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.5 }}
-          >
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-amber-300 font-medium">Token Address:</span>
-              <button
-                onClick={copyToClipboard}
-                className="flex items-center text-white/80 hover:text-white bg-amber-800/50 hover:bg-amber-700/50 px-3 py-1 rounded-md transition-all duration-300"
-              >
-                {copied ? <Check size={16} className="mr-1 text-green-400" /> : <Copy size={16} className="mr-1" />}
-                {copied ? "Copied!" : "Copy"}
-              </button>
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-white">Next Steps</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-black/20 p-4 rounded-lg border border-white/10">
+              <h4 className="font-medium text-amber-400 mb-2">Add to Wallet</h4>
+              <p className="text-sm text-white/70 mb-3">
+                Add your token to Phantom, Solflare, or other Solana wallets using the token address.
+              </p>
             </div>
-            <div className="font-mono text-sm break-all bg-black/40 p-3 rounded text-amber-100 border border-amber-500/20">
-              {mintAddress}
+            <div className="bg-black/20 p-4 rounded-lg border border-white/10">
+              <h4 className="font-medium text-amber-400 mb-2">Create Liquidity</h4>
+              <p className="text-sm text-white/70 mb-3">Add liquidity on Raydium to make your token tradable.</p>
+              <ModernButton onClick={openRaydiumLiquidity} size="sm" variant="outline" className="w-full">
+                Raydium Liquidity
+              </ModernButton>
             </div>
-          </motion.div>
+          </div>
+
+          <div className="mt-4 bg-black/20 p-4 rounded-lg border border-white/10 w-full">
+            <h4 className="font-medium text-amber-400 mb-2">Manage Your Positions</h4>
+            <p className="text-sm text-white/70 mb-3">Track and manage your liquidity positions and token holdings.</p>
+            <ModernButton onClick={openRaydiumPortfolio} size="sm" variant="outline" className="w-full">
+              Raydium Portfolio
+            </ModernButton>
+          </div>
         </div>
-      </motion.div>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Left Column - Explore */}
-        <motion.div
-          className="bg-gradient-to-b from-amber-900/60 to-black/60 rounded-xl border border-amber-500/30 p-6 shadow-lg"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.6, duration: 0.5 }}
-        >
-          <h2 className="text-2xl font-bold text-amber-400 mb-4 flex items-center">
-            <ExternalLink className="mr-2" size={20} />
-            Explore Your Token
-          </h2>
-
-          <div className="space-y-4">
-            <p className="text-white/80 mb-4">View your token on these blockchain explorers:</p>
-
-            <div className="space-y-3">
-              <a
-                href={`https://solscan.io/token/${mintAddress}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between p-4 bg-gradient-to-r from-amber-900/40 to-amber-800/40 hover:from-amber-800/40 hover:to-amber-700/40 border border-amber-500/30 rounded-lg transition-all duration-300 group"
-              >
-                <div>
-                  <span className="font-medium text-amber-300 group-hover:text-amber-200">Solscan</span>
-                  <p className="text-xs text-white/60">Detailed token information and transactions</p>
-                </div>
-                <div className="bg-amber-500/20 p-2 rounded-full">
-                  <ExternalLink size={16} className="text-amber-300" />
-                </div>
-              </a>
-
-              <a
-                href={`https://explorer.solana.com/address/${mintAddress}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between p-4 bg-gradient-to-r from-amber-900/40 to-amber-800/40 hover:from-amber-800/40 hover:to-amber-700/40 border border-amber-500/30 rounded-lg transition-all duration-300 group"
-              >
-                <div>
-                  <span className="font-medium text-amber-300 group-hover:text-amber-200">Solana Explorer</span>
-                  <p className="text-xs text-white/60">Official Solana blockchain explorer</p>
-                </div>
-                <div className="bg-amber-500/20 p-2 rounded-full">
-                  <ExternalLink size={16} className="text-amber-300" />
-                </div>
-              </a>
-
-              <a
-                href={`https://dexscreener.com/solana/${mintAddress}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between p-4 bg-gradient-to-r from-amber-900/40 to-amber-800/40 hover:from-amber-800/40 hover:to-amber-700/40 border border-amber-500/30 rounded-lg transition-all duration-300 group"
-              >
-                <div>
-                  <span className="font-medium text-amber-300 group-hover:text-amber-200">DexScreener</span>
-                  <p className="text-xs text-white/60">Track price and trading activity</p>
-                </div>
-                <div className="bg-amber-500/20 p-2 rounded-full">
-                  <ExternalLink size={16} className="text-amber-300" />
-                </div>
-              </a>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Right Column - Next Steps */}
-        <motion.div
-          className="bg-gradient-to-b from-amber-900/60 to-black/60 rounded-xl border border-amber-500/30 p-6 shadow-lg"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.7, duration: 0.5 }}
-        >
-          <h2 className="text-2xl font-bold text-amber-400 mb-4">Next Steps</h2>
-
-          <div className="space-y-4">
-            <p className="text-white/80 mb-4">Make your token tradable by adding liquidity:</p>
-
-            <div className="space-y-3">
-              <a
-                href="https://raydium.io/liquidity/create-pool/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between p-4 bg-gradient-to-r from-amber-900/40 to-amber-800/40 hover:from-amber-800/40 hover:to-amber-700/40 border border-amber-500/30 rounded-lg transition-all duration-300 group"
-              >
-                <div>
-                  <span className="font-medium text-amber-300 group-hover:text-amber-200">Create Liquidity Pool</span>
-                  <p className="text-xs text-white/60">Pair your token with SOL to enable trading</p>
-                </div>
-                <div className="bg-amber-500/20 p-2 rounded-full">
-                  <ExternalLink size={16} className="text-amber-300" />
-                </div>
-              </a>
-
-              <a
-                href="https://raydium.io/portfolio/?position_tab=standard"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between p-4 bg-gradient-to-r from-amber-900/40 to-amber-800/40 hover:from-amber-800/40 hover:to-amber-700/40 border border-amber-500/30 rounded-lg transition-all duration-300 group"
-              >
-                <div>
-                  <span className="font-medium text-amber-300 group-hover:text-amber-200">Manage Liquidity</span>
-                  <p className="text-xs text-white/60">View and manage your liquidity positions</p>
-                </div>
-                <div className="bg-amber-500/20 p-2 rounded-full">
-                  <ExternalLink size={16} className="text-amber-300" />
-                </div>
-              </a>
-
-              <button
-                onClick={() => {
-                  // Create a shareable URL
-                  const shareText = `Check out my new Solana token: ${tokenName} (${tokenSymbol})! ${window.location.origin}/token/${mintAddress}`
-
-                  // Try to use the Web Share API if available
-                  if (navigator.share) {
-                    navigator
-                      .share({
-                        title: `${tokenName} Token`,
-                        text: shareText,
-                        url: `${window.location.origin}/token/${mintAddress}`,
-                      })
-                      .catch((err) => {
-                        console.error("Error sharing:", err)
-                      })
-                  } else {
-                    // Fallback to copying to clipboard
-                    navigator.clipboard.writeText(shareText)
-                    alert("Share text copied to clipboard!")
-                  }
-                }}
-                className="flex items-center justify-between p-4 bg-gradient-to-r from-amber-900/40 to-amber-800/40 hover:from-amber-800/40 hover:to-amber-700/40 border border-amber-500/30 rounded-lg transition-all duration-300 group"
-              >
-                <div>
-                  <span className="font-medium text-amber-300 group-hover:text-amber-200">Share Your Token</span>
-                  <p className="text-xs text-white/60">Let others know about your new token</p>
-                </div>
-                <div className="bg-amber-500/20 p-2 rounded-full">
-                  <Share2 size={16} className="text-amber-300" />
-                </div>
-              </button>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Bottom Actions */}
-      <motion.div
-        className="mt-8 flex flex-col md:flex-row gap-4 justify-center"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8, duration: 0.5 }}
-      >
-        <ModernButton
-          onClick={onCreateAnother}
-          size="lg"
-          className="px-8 py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white"
-        >
-          Create Another Token
-        </ModernButton>
-
-        <Link href="/home">
-          <ModernButton
-            variant="outline"
-            size="lg"
-            className="px-8 py-4 border-amber-500 text-amber-400 hover:bg-amber-500/10"
-          >
-            Back to Home
+        <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+          <ModernButton onClick={onCreateAnother} size="lg">
+            Create Another Token
           </ModernButton>
-        </Link>
-      </motion.div>
+          <Link href="/completed-tokens">
+            <ModernButton variant="outline" size="lg">
+              View All My Tokens
+            </ModernButton>
+          </Link>
+        </div>
+      </ModernCard>
     </div>
   )
 }
+
+export default TokenCompletionPage

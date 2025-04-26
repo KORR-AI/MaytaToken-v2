@@ -42,6 +42,9 @@ export default function Step4Review() {
         mintAddress={mintAddress}
         tokenName={formState.tokenName}
         tokenSymbol={formState.symbol}
+        tokenImage={imagePreview}
+        tokenSupply={formState.supply}
+        tokenDecimals={formState.decimals}
         onCreateAnother={() => window.location.reload()}
       />
     )
@@ -190,6 +193,20 @@ export default function Step4Review() {
               <span className="text-white/60">Unknown</span>
             )}
           </div>
+          {balance !== null && balance < 0.0025 && (
+            <div className="mt-4 p-3 bg-red-900/50 border border-red-500 text-red-200 rounded-md">
+              <div className="flex items-start">
+                <AlertCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0 text-red-400" />
+                <div>
+                  <h3 className="font-bold mb-1">Insufficient Balance Warning</h3>
+                  <p>
+                    Your current balance of {balance.toFixed(5)} SOL is too low to complete this transaction. You need
+                    at least 0.0025 SOL to create a token. Please add more SOL to your wallet before proceeding.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {error && (

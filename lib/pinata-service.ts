@@ -4,7 +4,8 @@
 
 export async function uploadMetadataToPinata(metadata: any) {
   try {
-    // Always use our server API route
+    // Use server API route for metadata upload
+    console.log("Using server API route for metadata upload")
     const response = await fetch("/api/metadata", {
       method: "POST",
       headers: {
@@ -66,9 +67,10 @@ export async function uploadImageToPinata(imageUrl: string, name: string) {
       return imageUrl
     }
 
-    // Always use our server API route
+    // Use server API route for image upload
+    console.log("Using server API route for image upload")
     const formData = new FormData()
-    formData.append("file", imageBlob, name)
+    formData.append("file", imageBlob, name || "image.png")
 
     const res = await fetch("/api/upload", {
       method: "POST",

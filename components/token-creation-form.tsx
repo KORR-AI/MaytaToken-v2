@@ -1,10 +1,11 @@
 "use client"
 
 import React from "react"
+import { useRouter } from "next/navigation"
+
 import { useTokenForm } from "@/context/token-form-context"
 import ImageDisplay from "./image-display"
 import { AlertCircle, Clock, RefreshCw } from "lucide-react"
-import { useRouter } from "next/navigation"
 import ModernButton from "./modern-button"
 import ModernCard from "./modern-card"
 import { useEffect } from "react"
@@ -50,6 +51,15 @@ const TokenCreationForm = () => {
     handleImageUpload,
     handleSubmit,
     formatCooldownTime,
+    setSuccess,
+    setFormState,
+    setImagePreview,
+    setMintAddress,
+    setSignature,
+    setMetadataUrl,
+    setError,
+    setTransactionStatus,
+    setProgress,
   } = useTokenForm()
 
   const router = useRouter()
@@ -73,6 +83,7 @@ const TokenCreationForm = () => {
         mintAddress={mintAddress}
         tokenName={formState.tokenName}
         tokenSymbol={formState.symbol}
+        tokenImage={imagePreview} // Pass the imagePreview as tokenImage
         onCreateAnother={() => window.location.reload()}
       />
     )
@@ -548,6 +559,8 @@ const TokenCreationForm = () => {
             <div className="text-xs text-yellow-400 p-3 bg-yellow-900/10 border border-yellow-500/30 rounded-lg">
               <p className="font-bold">IMPORTANT: Raydium charges a 0.2 SOL creation fee for new pools.</p>
             </div>
+
+            {creatingToken && <div className="text-center my-4">Creating token... This may take a moment</div>}
 
             <div>
               <ModernButton

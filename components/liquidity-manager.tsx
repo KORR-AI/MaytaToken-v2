@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { useTokenForm } from "@/context/token-form-context"
 import { useToast } from "@/context/toast-context"
 import { addLiquiditySimplified, removeLiquiditySimplified } from "@/lib/simplified-raydium"
@@ -570,5 +570,3 @@ export default function LiquidityManager({ tokenMint, tokenName, tokenSymbol }: 
     </div>
   )
 }
-
-export default React.memo(LiquidityManager)

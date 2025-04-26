@@ -1,6 +1,5 @@
 "use client"
-// context/token-form-context.tsx
-import { simplifiedRaydium } from '@/lib/simplified-raydium';
+
 import type React from "react"
 import { createContext, useContext, useState, useEffect, useRef } from "react"
 import { createToken } from "@/lib/token-service"
@@ -491,6 +490,7 @@ export function TokenFormProvider({ children }: { children: React.ReactNode }) {
     })
   }
 
+  // Update the handleChange function to validate numeric inputs
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type, checked } = e.target
 
@@ -503,7 +503,17 @@ export function TokenFormProvider({ children }: { children: React.ReactNode }) {
         socials: { ...prev.socials, [socialPlatform]: value },
       }))
     } else if (name === "fee") {
-      setFormState((prev) => ({ ...prev, [name]: Number.parseFloat(value) }))
+      // Validate fee is a number
+      const feeValue = Number.parseFloat(value)
+      if (!isNaN(feeValue)) {
+        setFormState((prev) => ({ ...prev, [name]: feeValue }))
+      }
+    } else if (name === "supply" || name === "decimals") {
+      // Validate supply and decimals are valid numbers
+      const numValue = name === "decimals" ? Number.parseInt(value, 10) : Number.parseFloat(value)
+      if (!isNaN(numValue)) {
+        setFormState((prev) => ({ ...prev, [name]: value }))
+      }
     } else {
       setFormState((prev) => ({ ...prev, [name]: value }))
     }
@@ -845,7 +855,9 @@ export function TokenFormProvider({ children }: { children: React.ReactNode }) {
 
       logDebugInfo("Starting token creation process")
       logDebugInfo("Form state:", formState)
-      logDebugInfo("Using server-side API for Pinata uploads")
+
+      // Remove direct access to sensitive environment variables
+      // Instead, we'll rely on server-side API routes for Pinata operations
 
       // Update progress for initialization
       setProgress(5)
@@ -981,13 +993,34 @@ export function TokenFormProvider({ children }: { children: React.ReactNode }) {
         console.error("Token creation error:", tokenError)
 
         // Handle user rejection specifically
-        if (tokenError.message && tokenError.message.includes("User rejected")) {
+        if (
+          tokenError.message &&
+          (tokenError.message.includes("User rejected") || tokenError.message.includes("rejected the request"))
+        ) {
           setError("Transaction was rejected. You can try again when ready.")
           setTransactionStatus("Transaction cancelled by user")
           addToast({
             title: "Transaction Rejected",
             description: "You rejected the transaction. You can try again when ready.",
             type: "warning",
+          })
+          return // Exit early
+        }
+
+        // Handle insufficient funds errors specifically
+        if (
+          tokenError.message &&
+          (tokenError.message.includes("insufficient lamports") ||
+            tokenError.message.includes("insufficient funds") ||
+            tokenError.message.includes("Insufficient SOL balance"))
+        ) {
+          setError("Insufficient SOL balance. Please add more SOL to your wallet and try again.")
+          setTransactionStatus("Error: Insufficient SOL balance for transaction")
+          addToast({
+            title: "Insufficient Balance",
+            description: "You don't have enough SOL to complete this transaction. Please add more SOL to your wallet.",
+            type: "error",
+            duration: 10000, // Show for longer
           })
           return // Exit early
         }

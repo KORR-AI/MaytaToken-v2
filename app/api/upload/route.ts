@@ -3,6 +3,7 @@ import { writeFile } from "fs/promises"
 import { join } from "path"
 import { mkdir } from "fs/promises"
 import { randomUUID } from "crypto"
+import { pinFileToIPFS } from "@/lib/pinata-client"
 
 // Function to save file locally (fallback when Pinata keys are not available)
 async function saveFileLocally(file: File): Promise<string> {
@@ -43,53 +44,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 })
     }
 
-    // Check if Pinata API keys are available
-    const pinataApiKey = process.env.PINATA_API_KEY
-    const pinataSecretKey = process.env.PINATA_SECRET_KEY
+    // Log environment variables (without revealing full values)
+    console.log("PINATA_API_KEY exists:", !!process.env.PINATA_API_KEY)
+    console.log("PINATA_SECRET_KEY exists:", !!process.env.PINATA_SECRET_KEY)
 
-    // If Pinata keys are available, try to use Pinata
-    if (pinataApiKey && pinataSecretKey) {
-      try {
-        // Create a FormData object for Pinata
-        const pinataFormData = new FormData()
-        pinataFormData.append("file", file)
+    try {
+      // Convert file to buffer
+      const buffer = Buffer.from(await file.arrayBuffer())
 
-        const response = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
-          method: "POST",
-          headers: {
-            pinata_api_key: pinataApiKey,
-            pinata_secret_api_key: pinataSecretKey,
-          },
-          body: pinataFormData,
-        })
+      // Try to upload to Pinata
+      const pinataResponse = await pinFileToIPFS(buffer, file.name || "image.png")
 
-        if (!response.ok) {
-          throw new Error(`Pinata API error: ${response.statusText}`)
-        }
+      console.log("Pinata upload successful:", pinataResponse)
 
-        const data = await response.json()
-        return NextResponse.json({
-          IpfsHash: data.IpfsHash,
-          PinSize: data.PinSize,
-          Timestamp: data.Timestamp,
-          isDevelopmentFallback: false,
-        })
-      } catch (error) {
-        console.error("Error uploading to Pinata:", error)
-        // Fall back to local storage if Pinata upload fails
-      }
+      return NextResponse.json({
+        IpfsHash: pinataResponse.IpfsHash,
+        PinSize: pinataResponse.PinSize,
+        Timestamp: pinataResponse.Timestamp,
+        isDevelopmentFallback: false,
+      })
+    } catch (error: any) {
+      console.error("Error uploading to Pinata:", error.message)
+      console.log("Falling back to local storage")
+
+      // If there's an error with Pinata, fall back to local storage
+      const localFilePath = await saveFileLocally(file)
+
+      return NextResponse.json({
+        IpfsHash: "local",
+        PinSize: file.size,
+        Timestamp: new Date().toISOString(),
+        isDevelopmentFallback: true,
+        localUrl: localFilePath,
+      })
     }
-
-    // Use local storage fallback
-    const localFilePath = await saveFileLocally(file)
-
-    return NextResponse.json({
-      IpfsHash: "local", // Indicate this is a local file
-      PinSize: file.size,
-      Timestamp: new Date().toISOString(),
-      isDevelopmentFallback: true,
-      localUrl: localFilePath,
-    })
   } catch (error: any) {
     console.error("Error handling file upload:", error)
     return NextResponse.json({ error: `Error handling file upload: ${error.message}` }, { status: 500 })
