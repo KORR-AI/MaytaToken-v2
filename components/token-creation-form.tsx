@@ -10,6 +10,9 @@ import ModernButton from "./modern-button"
 import ModernCard from "./modern-card"
 import { useEffect } from "react"
 
+// Add this near the top of your file, where other imports are
+import Link from "next/link"
+
 // Import the GlowingBalance component
 import GlowingBalance from "./glowing-balance"
 import StyledFileInput from "./styled-file-input"
@@ -293,6 +296,12 @@ const TokenCreationForm = () => {
                 </div>
               </div>
             )}
+            {/* Add this somewhere in your form, perhaps near the image upload section */}
+            <div className="mt-4 text-center">
+              <Link href="/settings" className="text-blue-400 hover:text-blue-300 text-sm">
+                Configure IPFS Settings (Pinata)
+              </Link>
+            </div>
           </ModernCard>
 
           {/* Authorities */}

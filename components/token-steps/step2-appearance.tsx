@@ -1,117 +1,146 @@
 "use client"
 
 import { useTokenForm } from "@/context/token-form-context"
-import { useFormStep } from "@/context/form-step-context"
-import ModernButton from "../modern-button"
-import ModernCard from "../modern-card"
-import ImageDisplay from "../image-display"
-import LeverToggle from "../lever-toggle"
-import { motion, AnimatePresence } from "framer-motion"
-import StyledFileInput from "../styled-file-input"
+import StyledFileInput from "@/components/styled-file-input"
+import { PinataModal } from "@/components/pinata-modal"
 
 export default function Step2Appearance() {
-  const { formState, handleChange, imagePreview, uploadingImage, handleImageUpload, setFormState } = useTokenForm()
-  const { nextStep, prevStep } = useFormStep()
-
-  const toggleCreatorInfo = () => {
-    setFormState((prev) => ({ ...prev, enableCreatorInfo: !prev.enableCreatorInfo }))
-  }
+  const { formState, handleChange, handleImageUpload, imagePreview, uploadingImage } = useTokenForm()
 
   return (
-    <div className="space-y-8 max-w-2xl mx-auto">
-      <ModernCard className="p-8" variant="gradient">
-        <h2 className="text-2xl font-bold text-amber-400 mb-8 text-center">Token Appearance</h2>
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold">Token Appearance</h2>
 
-        <div className="mb-8">
-          <label htmlFor="image" className="block text-xl font-medium text-amber-400 mb-3">
+      <div className="space-y-4">
+        <div>
+          <label htmlFor="image" className="block text-sm font-medium mb-1">
             Token Image
           </label>
-          <StyledFileInput id="image" name="image" accept="image/*" onChange={handleImageUpload} className="mt-1" />
-          <p className="text-sm text-white/60 mt-2">
-            Images will be resized to 500x500 pixels for wallet compatibility
+          <StyledFileInput
+            id="image"
+            onChange={handleImageUpload}
+            imagePreview={imagePreview}
+            isUploading={uploadingImage}
+            accept="image/*"
+          />
+          <p className="text-xs text-gray-500 mt-1">Upload an image for your token (recommended size: 500x500px)</p>
+        </div>
+
+        <div className="mt-4">
+          <PinataModal />
+          <p className="text-xs text-gray-500 mt-1">
+            Configure Pinata IPFS for permanent decentralized storage of your token metadata
           </p>
-          {uploadingImage && <p className="text-yellow-400 mt-2">Uploading image...</p>}
-          {imagePreview && (
-            <div className="mt-6 flex justify-center">
-              <div className="relative w-48 h-48 overflow-hidden rounded-full border border-white/20 shadow-lg shadow-black/50">
-                <ImageDisplay
-                  src={imagePreview || "/placeholder.svg"}
-                  alt="Token Preview"
-                  width={192}
-                  height={192}
-                  className="rounded-full max-h-48 mx-auto z-10 relative"
-                />
-              </div>
-            </div>
-          )}
         </div>
 
-        <div className="mb-4">
-          <div
-            className={`p-4 rounded-lg ${formState.enableCreatorInfo ? "bg-amber-900/20 border border-amber-500/30" : "bg-black/20 border border-white/10"} transition-colors duration-300`}
-          >
-            <LeverToggle
-              enabled={formState.enableCreatorInfo}
-              onChange={toggleCreatorInfo}
-              label="Enable Creator Info"
-              price="+0.1 SOL"
-              className="mb-4"
+        <div className="mt-6">
+          <label className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              name="enableCreatorInfo"
+              checked={formState.enableCreatorInfo}
+              onChange={handleChange}
+              className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
             />
-
-            <AnimatePresence>
-              {formState.enableCreatorInfo && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="overflow-hidden"
-                >
-                  <div className="space-y-4 mt-4 border-t border-amber-500/30 pt-4">
-                    <div>
-                      <label htmlFor="creatorName" className="block text-lg text-white/80 mb-2">
-                        Creator Name
-                      </label>
-                      <input
-                        type="text"
-                        id="creatorName"
-                        name="creatorName"
-                        value={formState.creatorName || ""}
-                        onChange={handleChange}
-                        className="mt-1 p-5 w-full rounded-lg bg-gray-800/50 text-white text-lg border border-white/10 focus:border-amber-500 focus:ring-amber-500 transition-all duration-300 hover:border-white/30 outline-none"
-                        placeholder="Your name or organization"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="siteName" className="block text-lg text-white/80 mb-2">
-                        Site Name
-                      </label>
-                      <input
-                        type="text"
-                        id="siteName"
-                        name="siteName"
-                        value={formState.siteName || ""}
-                        onChange={handleChange}
-                        className="mt-1 p-5 w-full rounded-lg bg-gray-800/50 text-white text-lg border border-white/10 focus:border-amber-500 focus:ring-amber-500 transition-all duration-300 hover:border-white/30 outline-none"
-                        placeholder="Your website name"
-                      />
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+            <span>Add Creator Information (+0.1 SOL)</span>
+          </label>
         </div>
-      </ModernCard>
 
-      <div className="flex justify-between">
-        <ModernButton onClick={prevStep} variant="outline" size="lg" className="px-10 py-4 text-lg">
-          Previous
-        </ModernButton>
-        <ModernButton onClick={nextStep} size="lg" className="px-10 py-4 text-lg">
-          Next Step
-        </ModernButton>
+        {formState.enableCreatorInfo && (
+          <div className="space-y-4 pl-6 border-l-2 border-gray-200 mt-2">
+            <div>
+              <label htmlFor="creatorName" className="block text-sm font-medium mb-1">
+                Creator Name
+              </label>
+              <input
+                type="text"
+                id="creatorName"
+                name="creatorName"
+                value={formState.creatorName || ""}
+                onChange={handleChange}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                placeholder="Enter creator name"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="siteName" className="block text-sm font-medium mb-1">
+                Website
+              </label>
+              <input
+                type="text"
+                id="siteName"
+                name="siteName"
+                value={formState.siteName || ""}
+                onChange={handleChange}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                placeholder="Enter website URL"
+              />
+            </div>
+
+            <div>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  name="enableSocialLinks"
+                  checked={formState.enableSocialLinks}
+                  onChange={handleChange}
+                  className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                />
+                <span>Add Social Links (+0.1 SOL)</span>
+              </label>
+            </div>
+
+            {formState.enableSocialLinks && (
+              <div className="space-y-4 pl-6 border-l-2 border-gray-200 mt-2">
+                <div>
+                  <label htmlFor="socials.twitter" className="block text-sm font-medium mb-1">
+                    Twitter
+                  </label>
+                  <input
+                    type="text"
+                    id="socials.twitter"
+                    name="socials.twitter"
+                    value={formState.socials?.twitter || ""}
+                    onChange={handleChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                    placeholder="Twitter username"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="socials.telegram" className="block text-sm font-medium mb-1">
+                    Telegram
+                  </label>
+                  <input
+                    type="text"
+                    id="socials.telegram"
+                    name="socials.telegram"
+                    value={formState.socials?.telegram || ""}
+                    onChange={handleChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                    placeholder="Telegram username or group"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="socials.discord" className="block text-sm font-medium mb-1">
+                    Discord
+                  </label>
+                  <input
+                    type="text"
+                    id="socials.discord"
+                    name="socials.discord"
+                    value={formState.socials?.discord || ""}
+                    onChange={handleChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                    placeholder="Discord invite link"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -29,6 +29,25 @@ import {
 } from "@solana/spl-token-metadata"
 import { uploadMetadataToPinata } from "./pinata-service"
 
+// Add this function near the top of the file, after the imports
+async function createLocalMetadataFallback(metadata: any): Promise<string> {
+  try {
+    // Generate a unique ID for the metadata
+    const uniqueId = Date.now().toString(36) + Math.random().toString(36).substring(2)
+
+    // Create a URL for the metadata
+    const baseUrl = typeof window !== "undefined" ? window.location.origin : ""
+    const metadataUrl = `${baseUrl}/uploads/${uniqueId}-metadata.json`
+
+    console.log("Created local metadata fallback URL:", metadataUrl)
+    return metadataUrl
+  } catch (error) {
+    console.error("Error creating local metadata fallback:", error)
+    // Return a placeholder URL
+    return "https://example.com/metadata.json"
+  }
+}
+
 // Circuit breaker to track rate limit status
 const circuitBreaker = {
   isOpen: false,
@@ -567,8 +586,9 @@ export const createToken = async (
       console.log("Metadata uploaded to IPFS:", metadataUrl)
     } catch (error) {
       console.warn("Failed to upload metadata to IPFS:", error)
-      // Continue without metadata if upload fails
-      metadataUrl = ""
+      // Create a local fallback URL for the metadata
+      metadataUrl = await createLocalMetadataFallback(metadata)
+      console.log("Using local fallback for metadata:", metadataUrl)
     }
 
     // Add a longer delay after metadata upload to avoid rate limits

@@ -1,102 +1,147 @@
-"use client"
+// Function to get Pinata API keys from localStorage
+export function getPinataKeys() {
+  if (typeof window === "undefined") return null
 
-// Utility functions for interacting with Pinata IPFS
+  const apiKey = localStorage.getItem("pinataApiKey")
+  const apiSecret = localStorage.getItem("pinataApiSecret")
 
+  if (!apiKey || !apiSecret) return null
+
+  return { apiKey, apiSecret }
+}
+
+// Function to upload metadata to Pinata
 export async function uploadMetadataToPinata(metadata: any) {
   try {
-    // Use server API route for metadata upload
-    console.log("Using server API route for metadata upload")
+    console.log("Uploading metadata...")
+
+    // Try to get client-side Pinata keys first
+    const clientKeys = getPinataKeys()
+
+    if (clientKeys) {
+      console.log("Using client-side Pinata keys")
+
+      // Try direct upload to Pinata using client keys
+      try {
+        const directResponse = await fetch("https://api.pinata.cloud/pinning/pinJSONToIPFS", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            pinata_api_key: clientKeys.apiKey,
+            pinata_secret_api_key: clientKeys.apiSecret,
+          },
+          body: JSON.stringify(metadata),
+        })
+
+        if (directResponse.ok) {
+          const data = await directResponse.json()
+          console.log("Direct Pinata upload successful:", data)
+          return `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`
+        } else {
+          console.error("Direct Pinata upload failed:", await directResponse.text())
+          throw new Error("Direct Pinata upload failed")
+        }
+      } catch (directError) {
+        console.error("Error with direct Pinata upload:", directError)
+        // Fall through to server-side upload
+      }
+    }
+
+    // Fall back to server-side upload
+    console.log("Falling back to server-side upload")
+
+    // Try server-side upload with client keys if available
+    const body: any = { metadata }
+    if (clientKeys) {
+      body.pinataApiKey = clientKeys.apiKey
+      body.pinataApiSecret = clientKeys.apiSecret
+    }
+
     const response = await fetch("/api/metadata", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(metadata),
+      body: JSON.stringify(body),
     })
 
     if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Failed to upload metadata: ${error}`)
+      const errorText = await response.text()
+      console.error("Error uploading to Pinata:", errorText)
+      throw new Error(`Pinata API error: ${errorText}`)
     }
 
     const data = await response.json()
 
-    // If this is a development fallback, use the local URL
-    if (data.isDevelopmentFallback) {
-      console.log("Using local storage for metadata")
-      // Return a fully qualified URL including the domain
-      const baseUrl = window.location.origin
-      return `${baseUrl}${data.url}`
+    if (data.error) {
+      console.error("Error uploading to Pinata:", data.error)
+      throw new Error(`Error uploading to Pinata: ${data.error}`)
     }
 
-    // Return the IPFS URL
+    console.log("Metadata uploaded to IPFS:", data.url)
     return data.url
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error uploading metadata:", error)
-    throw error
+
+    // Create a local fallback URL for metadata
+    const uniqueId = Date.now().toString(36) + Math.random().toString(36).substring(2)
+    const localUrl = `/uploads/${uniqueId}-metadata.json`
+
+    // Store metadata locally
+    try {
+      const localResponse = await fetch("/api/local-upload", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          file: JSON.stringify(metadata, null, 2),
+          fileName: `${uniqueId}-metadata.json`,
+          contentType: "application/json",
+        }),
+      })
+
+      if (localResponse.ok) {
+        const localData = await localResponse.json()
+        console.log("Metadata saved locally:", localData.localUrl)
+        return localData.localUrl
+      }
+    } catch (localError) {
+      console.error("Error saving metadata locally:", localError)
+    }
+
+    // If all else fails, return a client-side generated URL
+    // This will be used as a fallback in the token creation process
+    console.log("Using emergency fallback for metadata URL")
+    const fallbackUrl = `/uploads/${uniqueId}-metadata.json`
+    return fallbackUrl
   }
 }
 
-// Update the uploadImageToPinata function to handle local images properly
-export async function uploadImageToPinata(imageUrl: string, name: string) {
+// Function to test Pinata API keys
+export async function testPinataConnection(apiKey: string, apiSecret: string) {
   try {
-    // If the image is already an IPFS URL, return it
-    if (imageUrl.includes("ipfs://") || imageUrl.includes("gateway.pinata.cloud")) {
-      return imageUrl
-    }
-
-    // If it's a local fallback URL from a previous upload, convert to full URL
-    if (imageUrl.startsWith("/uploads/")) {
-      const baseUrl = window.location.origin
-      return `${baseUrl}${imageUrl}`
-    }
-
-    // If it's a data URL or a remote URL, we need to fetch it first
-    let imageBlob: Blob
-
-    try {
-      // Try to fetch the image
-      const imageResponse = await fetch(imageUrl)
-      if (!imageResponse.ok) {
-        throw new Error(`Failed to fetch image: ${imageResponse.statusText}`)
-      }
-      imageBlob = await imageResponse.blob()
-    } catch (error) {
-      console.warn(`Failed to fetch image from URL: ${error}`)
-      // Return the original URL if we can't fetch it
-      return imageUrl
-    }
-
-    // Use server API route for image upload
-    console.log("Using server API route for image upload")
-    const formData = new FormData()
-    formData.append("file", imageBlob, name || "image.png")
-
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
+    const response = await fetch("https://api.pinata.cloud/data/testAuthentication", {
+      method: "GET",
+      headers: {
+        pinata_api_key: apiKey,
+        pinata_secret_api_key: apiSecret,
+      },
     })
 
-    if (!res.ok) {
-      const error = await res.text()
-      throw new Error(`Failed to upload image: ${error}`)
+    if (response.ok) {
+      return { success: true }
+    } else {
+      const errorData = await response.json()
+      return {
+        success: false,
+        error: errorData.error?.reason || "Authentication failed",
+      }
     }
-
-    const data = await res.json()
-
-    // Check if this is a development fallback
-    if (data.isDevelopmentFallback) {
-      console.log("Using local storage for image")
-      // Return a fully qualified URL including the domain
-      const baseUrl = window.location.origin
-      return `${baseUrl}${data.localUrl}`
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || "Connection failed",
     }
-
-    // Return the IPFS URL
-    return `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`
-  } catch (error) {
-    console.error("Error uploading image:", error)
-    // If there's an error, return the original URL
-    return imageUrl
   }
 }

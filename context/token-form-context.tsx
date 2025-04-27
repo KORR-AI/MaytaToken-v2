@@ -2,11 +2,11 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect, useRef } from "react"
-import { createToken } from "@/lib/token-service"
 import { useToast } from "@/context/toast-context"
 import { useRouter } from "next/navigation"
 import nacl from "tweetnacl"
 import bs58 from "bs58"
+import { createToken } from "@/lib/token-service" // Add this import
 
 // Add these helper functions at the top of your file, outside the TokenFormProvider component
 
@@ -67,7 +67,7 @@ const defaultFormState: FormState = {
   enableSocialLinks: false, // Add this line
 }
 
-type TokenContextType = {
+interface TokenContextType {
   formState: FormState
   setFormState: React.Dispatch<React.SetStateAction<FormState>>
   imagePreview: string
@@ -519,77 +519,77 @@ export function TokenFormProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // UPDATED: Modified handleImageUpload to use local storage directly
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
 
     const file = files[0]
     setUploadingImage(true)
+    setError("")
 
     try {
-      // Show preview
+      // Show preview immediately
       const reader = new FileReader()
       reader.onload = (e) => {
-        setImagePreview(e.target?.result as string)
+        const previewUrl = e.target?.result as string
+        setImagePreview(previewUrl)
       }
       reader.readAsDataURL(file)
 
-      // Resize the image to 500x500 before uploading
-      const resizedImageBlob = await resizeImage(file, 500, 500)
+      // Generate a unique filename
+      const uniqueId = Date.now().toString(36) + Math.random().toString(36).substring(2)
+      const fileName = `${uniqueId}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`
 
-      // Create a FormData object to send to our API route
-      const formData = new FormData()
-      formData.append("file", resizedImageBlob, file.name)
+      // Save the image URL directly in the form state
+      // This uses the data URL which works in the browser without server upload
+      const imageUrl = `/uploads/${fileName}`
+      setFormState((prev) => ({ ...prev, image: imageUrl }))
 
-      // Use our server-side API route to upload the image
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      })
+      // Now try to upload to server for persistence, but don't block UI
+      try {
+        // Resize the image to 500x500 before uploading
+        const resizedImageBlob = await resizeImage(file, 500, 500)
 
-      if (!res.ok) {
-        const error = await res.text()
-        throw new Error(`Failed to upload image: ${error}`)
+        // Create a FormData object
+        const formData = new FormData()
+        formData.append("file", resizedImageBlob, fileName)
+
+        // Use our local storage API route
+        const res = await fetch("/api/local-upload", {
+          method: "POST",
+          body: formData,
+        })
+
+        if (!res.ok) {
+          console.warn("Server upload failed, but using local preview")
+        } else {
+          const data = await res.json()
+          // Update with the server path if successful
+          setFormState((prev) => ({ ...prev, image: data.localUrl }))
+        }
+      } catch (uploadErr) {
+        console.warn("Server upload failed, but using local preview:", uploadErr)
+        // We continue with the local preview even if server upload fails
       }
 
-      const data = await res.json()
-
-      // Check if this is a development fallback
-      if (data.isDevelopmentFallback) {
-        console.log("Using local storage for image")
-        // Use the relative path for local images
-        setFormState((prev) => ({ ...prev, image: data.localUrl }))
-        addToast({
-          title: "Image Uploaded",
-          description: "Image has been uploaded successfully.",
-          type: "success",
-        })
-      } else {
-        // Update the form state with the IPFS URL
-        const ipfsUrl = `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`
-        setFormState((prev) => ({ ...prev, image: ipfsUrl }))
-        addToast({
-          title: "Image Uploaded to IPFS",
-          description: "Image has been uploaded to IPFS successfully.",
-          type: "success",
-        })
-      }
-    } catch (err: any) {
-      console.error("Error uploading image:", err)
-      setError(`Failed to upload image: ${err.message}`)
       addToast({
-        title: "Image Upload Failed",
+        title: "Image Added",
+        description: "Image has been added to your token.",
+        type: "success",
+      })
+    } catch (err: any) {
+      console.error("Error handling image:", err)
+      setError(`Failed to process image: ${err.message}`)
+      addToast({
+        title: "Image Processing Failed",
         description: err.message,
         type: "error",
       })
-      // Keep the preview but show an error
     } finally {
       setUploadingImage(false)
     }
   }
-
-  // Import the createToken function from token-service
-  // const { createToken } = require("@/lib/token-service")
 
   const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 

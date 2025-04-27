@@ -1,46 +1,26 @@
 import { NextResponse } from "next/server"
-import axios from "axios"
+import { testPinataConnection } from "@/lib/pinata-service"
 
-export async function GET() {
+export async function POST(request: Request) {
   try {
-    const apiKey = process.env.PINATA_API_KEY
-    const apiSecret = process.env.PINATA_SECRET_KEY
+    const { apiKey, apiSecret } = await request.json()
 
     if (!apiKey || !apiSecret) {
-      return NextResponse.json({
-        success: false,
-        message: "Pinata API keys not found in environment variables",
-      })
+      return NextResponse.json({ success: false, error: "API Key and Secret Key are required" }, { status: 400 })
     }
 
-    // Test the Pinata API keys with a simple request
-    const response = await axios.get("https://api.pinata.cloud/data/testAuthentication", {
-      headers: {
-        pinata_api_key: apiKey,
-        pinata_secret_api_key: apiSecret,
-      },
-    })
+    const result = await testPinataConnection(apiKey, apiSecret)
 
-    if (response.status === 200) {
-      return NextResponse.json({
-        success: true,
-        message: "Pinata API keys are valid",
-        data: response.data,
-      })
+    if (result.success) {
+      return NextResponse.json({ success: true })
     } else {
-      return NextResponse.json({
-        success: false,
-        message: "Pinata API keys are invalid",
-        status: response.status,
-      })
+      return NextResponse.json(
+        { success: false, error: result.error || "Failed to connect to Pinata" },
+        { status: 400 },
+      )
     }
   } catch (error: any) {
-    console.error("Error testing Pinata API keys:", error)
-
-    return NextResponse.json({
-      success: false,
-      message: "Error testing Pinata API keys",
-      error: error.message,
-    })
+    console.error("Error testing Pinata connection:", error)
+    return NextResponse.json({ success: false, error: error.message || "An error occurred" }, { status: 500 })
   }
 }
