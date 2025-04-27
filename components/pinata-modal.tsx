@@ -4,22 +4,33 @@ import { useState } from "react"
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import PinataSettings from "@/components/pinata-settings"
+import { getPinataKeys } from "@/lib/pinata-service"
 
-export function PinataModal() {
-  const [open, setOpen] = useState(false)
+export default function PinataModal() {
+  const [isOpen, setIsOpen] = useState(false)
+  const [hasPinataKeys, setHasPinataKeys] = useState(() => {
+    if (typeof window !== "undefined") {
+      return !!getPinataKeys()
+    }
+    return false
+  })
 
   const handleClose = () => {
-    setOpen(false)
+    setIsOpen(false)
+    // Check if keys are now configured
+    if (typeof window !== "undefined") {
+      setHasPinataKeys(!!getPinataKeys())
+    }
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          Configure Pinata IPFS
+        <Button variant={hasPinataKeys ? "outline" : "default"} className="w-full">
+          {hasPinataKeys ? "Update IPFS Settings" : "Configure IPFS Storage"}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[425px]">
         <PinataSettings onClose={handleClose} />
       </DialogContent>
     </Dialog>

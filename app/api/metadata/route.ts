@@ -5,27 +5,54 @@ import path from "path"
 
 export async function POST(request: Request) {
   try {
-    const { metadata, pinataApiKey, pinataApiSecret } = await request.json()
+    const body = await request.json()
+    const metadata = body.metadata || body
+    const pinataApiKey = body.pinataApiKey || process.env.PINATA_API_KEY
+    const pinataApiSecret = body.pinataApiSecret || process.env.PINATA_SECRET_KEY
 
-    // Check if we have Pinata API keys (either from environment or client)
-    const apiKey = pinataApiKey || process.env.PINATA_API_KEY
-    const apiSecret = pinataApiSecret || process.env.PINATA_SECRET_KEY
+    // Validate metadata
+    if (!metadata) {
+      return NextResponse.json({ success: false, error: "No metadata provided" }, { status: 400 })
+    }
 
     // Log key availability (not the actual keys)
-    console.log("Pinata API key available:", !!apiKey)
-    console.log("Pinata API secret available:", !!apiSecret)
+    console.log("Pinata API key available:", !!pinataApiKey)
+    console.log("Pinata API secret available:", !!pinataApiSecret)
 
-    // If we have valid Pinata credentials, try to upload to IPFS
-    if (apiKey && apiSecret && apiKey !== "your_pinata_api_key" && apiSecret !== "your_pinata_secret_key") {
+    // Check if we have valid Pinata credentials
+    const hasValidKeys =
+      pinataApiKey &&
+      pinataApiSecret &&
+      pinataApiKey !== "your_pinata_api_key" &&
+      pinataApiSecret !== "your_pinata_secret_key" &&
+      pinataApiKey.length > 10 &&
+      pinataApiSecret.length > 10
+
+    if (hasValidKeys) {
       try {
         console.log("Attempting to upload to Pinata IPFS...")
 
+        // Test the keys first
+        const testResponse = await fetch("https://api.pinata.cloud/data/testAuthentication", {
+          method: "GET",
+          headers: {
+            pinata_api_key: pinataApiKey,
+            pinata_secret_api_key: pinataApiSecret,
+          },
+        })
+
+        if (!testResponse.ok) {
+          console.warn("Pinata API keys are invalid:", await testResponse.text())
+          throw new Error("Invalid Pinata API keys")
+        }
+
+        // Upload to Pinata
         const response = await fetch("https://api.pinata.cloud/pinning/pinJSONToIPFS", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            pinata_api_key: apiKey,
-            pinata_secret_api_key: apiSecret,
+            pinata_api_key: pinataApiKey,
+            pinata_secret_api_key: pinataApiSecret,
           },
           body: JSON.stringify(metadata),
         })
@@ -40,13 +67,18 @@ export async function POST(request: Request) {
         const ipfsUrl = `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`
 
         console.log("Successfully uploaded to IPFS:", ipfsUrl)
-        return NextResponse.json({ success: true, url: ipfsUrl })
+        return NextResponse.json({
+          success: true,
+          url: ipfsUrl,
+          ipfsHash: data.IpfsHash,
+          provider: "pinata",
+        })
       } catch (pinataError) {
         console.error("Error uploading to Pinata:", pinataError)
         // Fall through to local storage
       }
     } else {
-      console.log("Pinata API keys not configured, using local storage")
+      console.log("No valid Pinata API keys provided, using local storage")
     }
 
     // Fallback to local storage
@@ -66,9 +98,20 @@ export async function POST(request: Request) {
 
     // Return the URL to the locally stored metadata
     const localUrl = `/uploads/${fileName}`
-    return NextResponse.json({ success: true, url: localUrl })
+    return NextResponse.json({
+      success: true,
+      url: localUrl,
+      localId: metadataId,
+      provider: "local",
+    })
   } catch (error: any) {
     console.error("Error in metadata API route:", error)
-    return NextResponse.json({ success: false, error: error.message || "An error occurred" }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || "An error occurred",
+      },
+      { status: 500 },
+    )
   }
 }

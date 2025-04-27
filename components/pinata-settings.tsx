@@ -1,29 +1,30 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/context/toast-context"
+import { testPinataConnection } from "@/lib/pinata-service"
 
 export default function PinataSettings({ onClose }: { onClose: () => void }) {
-  const [apiKey, setApiKey] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("pinataApiKey") || ""
-    }
-    return ""
-  })
-
-  const [apiSecret, setApiSecret] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("pinataApiSecret") || ""
-    }
-    return ""
-  })
-
+  const [apiKey, setApiKey] = useState<string>("")
+  const [apiSecret, setApiSecret] = useState<string>("")
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
   const { addToast } = useToast()
+
+  // Load saved keys on component mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // Check both naming conventions for backward compatibility
+      const savedApiKey = localStorage.getItem("pinataApiKey") || localStorage.getItem("pinata_api_key") || ""
+      const savedApiSecret = localStorage.getItem("pinataApiSecret") || localStorage.getItem("pinata_secret_key") || ""
+
+      setApiKey(savedApiKey)
+      setApiSecret(savedApiSecret)
+    }
+  }, [])
 
   const testConnection = async () => {
     if (!apiKey || !apiSecret) {
@@ -38,34 +39,23 @@ export default function PinataSettings({ onClose }: { onClose: () => void }) {
     setTestResult(null)
 
     try {
-      const response = await fetch("/api/test-pinata", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          apiKey,
-          apiSecret,
-        }),
-      })
+      const result = await testPinataConnection(apiKey, apiSecret)
 
-      const data = await response.json()
-
-      if (data.success) {
+      if (result.success) {
         setTestResult({
           success: true,
-          message: "Connection successful! Your Pinata API keys are working.",
+          message: "Connection successful! Your Pinata API keys are valid.",
         })
       } else {
         setTestResult({
           success: false,
-          message: data.error || "Failed to connect to Pinata. Please check your API keys.",
+          message: result.error || "Failed to connect to Pinata. Please check your API keys.",
         })
       }
-    } catch (error) {
+    } catch (error: any) {
       setTestResult({
         success: false,
-        message: "An error occurred while testing the connection.",
+        message: error.message || "An error occurred while testing the connection.",
       })
     } finally {
       setTesting(false)
@@ -74,8 +64,11 @@ export default function PinataSettings({ onClose }: { onClose: () => void }) {
 
   const saveSettings = () => {
     if (typeof window !== "undefined") {
+      // Save with both naming conventions for maximum compatibility
       localStorage.setItem("pinataApiKey", apiKey)
+      localStorage.setItem("pinata_api_key", apiKey)
       localStorage.setItem("pinataApiSecret", apiSecret)
+      localStorage.setItem("pinata_secret_key", apiSecret)
 
       addToast({
         title: "Settings Saved",
@@ -107,7 +100,7 @@ export default function PinataSettings({ onClose }: { onClose: () => void }) {
           id="apiSecret"
           value={apiSecret}
           onChange={(e) => setApiSecret(e.target.value)}
-          placeholder="Enter your Pinata API Secret"
+          placeholder="Enter your Pinata Secret Key"
           type="password"
         />
       </div>

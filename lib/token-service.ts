@@ -27,7 +27,6 @@ import {
   pack,
   type TokenMetadata,
 } from "@solana/spl-token-metadata"
-import { uploadMetadataToPinata } from "./pinata-service"
 
 // Add this function near the top of the file, after the imports
 async function createLocalMetadataFallback(metadata: any): Promise<string> {
@@ -553,6 +552,9 @@ export const createToken = async (
       imageUrl = `${baseUrl}${imageUrl}`
     }
 
+    // Check if the image is already on IPFS
+    const isIpfsImage = imageUrl.includes("ipfs") || imageUrl.includes("pinata")
+
     const metadata = {
       name: params.tokenName,
       symbol: params.symbol,
@@ -576,19 +578,31 @@ export const createToken = async (
       },
     }
 
-    // Upload metadata to Pinata
+    // Upload metadata to IPFS
     onStatus?.("Uploading metadata to IPFS...")
     console.log("Uploading metadata to IPFS...")
+
+    // Import the uploadMetadataToPinata function directly to ensure it's the latest version
+    const { uploadMetadataToPinata } = await import("./pinata-service")
+
     let metadataUrl
     try {
-      // Use our server-side API for metadata upload
+      // Use our uploadMetadataToPinata function for metadata upload
       metadataUrl = await uploadMetadataToPinata(metadata)
       console.log("Metadata uploaded to IPFS:", metadataUrl)
+
+      // Check if the URL is an IPFS URL
+      if (metadataUrl.includes("ipfs") || metadataUrl.includes("pinata")) {
+        onStatus?.("✅ Metadata successfully uploaded to IPFS")
+      } else {
+        onStatus?.("⚠️ Metadata saved locally (IPFS upload not available)")
+      }
     } catch (error) {
       console.warn("Failed to upload metadata to IPFS:", error)
       // Create a local fallback URL for the metadata
       metadataUrl = await createLocalMetadataFallback(metadata)
       console.log("Using local fallback for metadata:", metadataUrl)
+      onStatus?.("⚠️ Using local fallback for metadata (IPFS upload failed)")
     }
 
     // Add a longer delay after metadata upload to avoid rate limits

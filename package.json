@@ -71,9 +71,9 @@
     "form-data": "latest",
     "stream": "latest",
     "crypto": "latest",
-    "@solana/spl-token-metadata": "latest",
     "tweetnacl": "latest",
-    "bs58": "latest"
+    "bs58": "latest",
+    "@solana/spl-token-metadata": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

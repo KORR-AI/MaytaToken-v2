@@ -2,10 +2,19 @@
 
 import { useTokenForm } from "@/context/token-form-context"
 import StyledFileInput from "@/components/styled-file-input"
-import { PinataModal } from "@/components/pinata-modal"
+import PinataModal from "@/components/pinata-modal"
+import { useState, useEffect } from "react"
+import { getPinataKeys } from "@/lib/pinata-service"
 
 export default function Step2Appearance() {
   const { formState, handleChange, handleImageUpload, imagePreview, uploadingImage } = useTokenForm()
+  const [hasPinataKeys, setHasPinataKeys] = useState(false)
+
+  // Check if Pinata keys are configured
+  useEffect(() => {
+    const keys = getPinataKeys()
+    setHasPinataKeys(!!keys)
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -26,11 +35,25 @@ export default function Step2Appearance() {
           <p className="text-xs text-gray-500 mt-1">Upload an image for your token (recommended size: 500x500px)</p>
         </div>
 
-        <div className="mt-4">
-          <PinataModal />
-          <p className="text-xs text-gray-500 mt-1">
-            Configure Pinata IPFS for permanent decentralized storage of your token metadata
-          </p>
+        <div className="mt-4 p-4 border border-gray-700 rounded-lg bg-gray-800">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium">IPFS Storage</h3>
+              <p className="text-xs text-gray-400">Store your token metadata permanently on IPFS</p>
+            </div>
+            <div className="flex items-center">
+              <span
+                className={`inline-block w-3 h-3 rounded-full mr-2 ${hasPinataKeys ? "bg-green-500" : "bg-red-500"}`}
+              ></span>
+              <span className="text-sm">{hasPinataKeys ? "Configured" : "Not Configured"}</span>
+            </div>
+          </div>
+          <div className="mt-2">
+            <PinataModal />
+          </div>
+          {hasPinataKeys && (
+            <p className="text-xs text-green-500 mt-2">✓ Your token metadata will be stored on IPFS via Pinata</p>
+          )}
         </div>
 
         <div className="mt-6">

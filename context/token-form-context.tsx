@@ -529,7 +529,7 @@ export function TokenFormProvider({ children }: { children: React.ReactNode }) {
     setError("")
 
     try {
-      // Show preview immediately
+      // Show preview immediately for better UX
       const reader = new FileReader()
       reader.onload = (e) => {
         const previewUrl = e.target?.result as string
@@ -541,12 +541,42 @@ export function TokenFormProvider({ children }: { children: React.ReactNode }) {
       const uniqueId = Date.now().toString(36) + Math.random().toString(36).substring(2)
       const fileName = `${uniqueId}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`
 
-      // Save the image URL directly in the form state
-      // This uses the data URL which works in the browser without server upload
-      const imageUrl = `/uploads/${fileName}`
-      setFormState((prev) => ({ ...prev, image: imageUrl }))
+      // Import the uploadImageToPinata function
+      const { uploadImageToPinata, getPinataKeys } = await import("@/lib/pinata-service")
 
-      // Now try to upload to server for persistence, but don't block UI
+      // Check if Pinata keys are available
+      const pinataKeys = getPinataKeys()
+      let imageUrl = ""
+
+      // First try to upload to IPFS if Pinata is configured
+      if (pinataKeys) {
+        try {
+          // Resize the image to 500x500 before uploading
+          const resizedImageBlob = await resizeImage(file, 500, 500)
+
+          // Try to upload to IPFS first
+          imageUrl = await uploadImageToPinata(resizedImageBlob, fileName)
+          console.log("Image uploaded to IPFS:", imageUrl)
+
+          // Update form state with the IPFS URL
+          setFormState((prev) => ({ ...prev, image: imageUrl }))
+
+          addToast({
+            title: "Image Added to IPFS",
+            description: "Image has been uploaded to IPFS and added to your token.",
+            type: "success",
+          })
+
+          // We're done if IPFS upload succeeded
+          setUploadingImage(false)
+          return
+        } catch (ipfsError) {
+          console.warn("IPFS upload failed, falling back to local storage:", ipfsError)
+          // Continue to local storage as fallback
+        }
+      }
+
+      // Fallback to local storage if IPFS upload failed or not configured
       try {
         // Resize the image to 500x500 before uploading
         const resizedImageBlob = await resizeImage(file, 500, 500)
@@ -562,22 +592,32 @@ export function TokenFormProvider({ children }: { children: React.ReactNode }) {
         })
 
         if (!res.ok) {
-          console.warn("Server upload failed, but using local preview")
-        } else {
-          const data = await res.json()
-          // Update with the server path if successful
-          setFormState((prev) => ({ ...prev, image: data.localUrl }))
+          throw new Error("Failed to upload image to server")
         }
-      } catch (uploadErr) {
-        console.warn("Server upload failed, but using local preview:", uploadErr)
-        // We continue with the local preview even if server upload fails
-      }
 
-      addToast({
-        title: "Image Added",
-        description: "Image has been added to your token.",
-        type: "success",
-      })
+        const data = await res.json()
+        // Update with the server path
+        imageUrl = data.localUrl
+        setFormState((prev) => ({ ...prev, image: imageUrl }))
+
+        addToast({
+          title: "Image Added Locally",
+          description: "Image has been saved locally and added to your token.",
+          type: "success",
+        })
+      } catch (uploadErr) {
+        console.error("Local storage upload failed:", uploadErr)
+
+        // Last resort: use the data URL directly
+        const localUrl = `/uploads/${fileName}`
+        setFormState((prev) => ({ ...prev, image: localUrl }))
+
+        addToast({
+          title: "Image Added",
+          description: "Image has been added to your token (local only).",
+          type: "warning",
+        })
+      }
     } catch (err: any) {
       console.error("Error handling image:", err)
       setError(`Failed to process image: ${err.message}`)
